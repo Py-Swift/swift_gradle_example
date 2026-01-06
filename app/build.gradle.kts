@@ -7,6 +7,9 @@ plugins {
 android {
     namespace = "com.example.swiftandroid"
     compileSdk = 35
+    
+    // NDK version required for libc++_shared.so
+    ndkVersion = "26.1.10909125"
 
     defaultConfig {
         applicationId = "com.example.swiftandroid"
@@ -38,6 +41,7 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
     
+    @Suppress("DEPRECATION")
     kotlinOptions {
         jvmTarget = "17"
     }
@@ -67,13 +71,9 @@ dependencies {
 }
 
 // Task to build Swift library before assembling
-tasks.register("buildSwiftLibrary") {
-    doLast {
-        exec {
-            workingDir = file("${project.rootDir}/swift-library")
-            commandLine("bash", "${project.rootDir}/scripts/build-swift.sh")
-        }
-    }
+tasks.register<Exec>("buildSwiftLibrary") {
+    workingDir = file("${project.rootDir}/swift-library")
+    commandLine("bash", "${project.rootDir}/scripts/build-swift.sh")
 }
 
 // Make sure Swift library is built before packaging

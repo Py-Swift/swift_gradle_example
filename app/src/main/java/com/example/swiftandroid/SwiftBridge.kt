@@ -13,7 +13,10 @@ object SwiftBridge {
             // Load Swift runtime libraries first (order matters!)
             // These are bundled from the Swift SDK for Android
             System.loadLibrary("swiftCore")
-            System.loadLibrary("swiftGlibc")
+            
+            // Optional libraries - may not exist in all Swift SDK versions
+            tryLoadLibrary("swiftGlibc")
+            
             System.loadLibrary("dispatch")
             System.loadLibrary("BlocksRuntime")
             
@@ -23,6 +26,15 @@ object SwiftBridge {
         } catch (e: UnsatisfiedLinkError) {
             System.err.println("Failed to load Swift libraries: ${e.message}")
             throw e
+        }
+    }
+    
+    private fun tryLoadLibrary(name: String) {
+        try {
+            System.loadLibrary(name)
+        } catch (e: UnsatisfiedLinkError) {
+            // Library not found - this is OK for optional libraries
+            System.err.println("Optional library $name not found, continuing...")
         }
     }
     
