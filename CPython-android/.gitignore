@@ -1,0 +1,9 @@
+# Build artifacts
+.build/
+build-android/
+Frameworks/
+
+# Xcode
+*.xcodeproj
+xcuserdata/
+*.xcworkspace
