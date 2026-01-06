@@ -1,0 +1,23 @@
+# Ignore build outputs
+.build/
+build/
+.gradle/
+
+# Android
+app/src/main/jniLibs/
+*.apk
+*.aab
+local.properties
+
+# IDE
+.idea/
+*.iml
+.vscode/
+
+# Swift
+.swiftpm/
+Package.resolved
+
+# OS
+.DS_Store
+Thumbs.db
