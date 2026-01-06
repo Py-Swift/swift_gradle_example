@@ -3,9 +3,9 @@ package com.example.swiftandroid
 /**
  * Bridge class for calling Swift native functions via JNI.
  * 
- * Phase 2: Swift-Java style interop for Android
- * This class demonstrates calling Swift functions that in turn
- * call back into Java via JNI - similar to swift-java patterns.
+ * Phase 3: Swift-Java-Python full integration for Android
+ * This class demonstrates the complete chain:
+ * Kotlin/Java <-> Swift <-> Python
  */
 object SwiftBridge {
     
@@ -20,6 +20,9 @@ object SwiftBridge {
             
             System.loadLibrary("dispatch")
             System.loadLibrary("BlocksRuntime")
+            
+            // Load Python library (Phase 3)
+            tryLoadLibrary("python3.13")
             
             // Load our Swift library
             System.loadLibrary("SwiftAndroidLib")
@@ -70,4 +73,50 @@ object SwiftBridge {
      * @return System information string
      */
     external fun getSystemInfo(): String
+    
+    // ============== Phase 3: Python Integration ==============
+    
+    /**
+     * Initialize Python interpreter from Swift.
+     * Must be called before any Python operations.
+     * 
+     * @param pythonHome Path to Python home directory
+     * @return true if initialization succeeded
+     */
+    external fun initializePython(pythonHome: String): Boolean
+    
+    /**
+     * Shutdown Python interpreter.
+     */
+    external fun finalizePython()
+    
+    /**
+     * Check if Python is initialized.
+     * 
+     * @return true if Python is ready
+     */
+    external fun isPythonInitialized(): Boolean
+    
+    /**
+     * Get Python version string.
+     * 
+     * @return Python version
+     */
+    external fun getPythonVersion(): String
+    
+    /**
+     * Run Python code from Swift.
+     * 
+     * @param code Python code to execute
+     * @return Result message
+     */
+    external fun runPythonCode(code: String): String
+    
+    /**
+     * Get Python demo information.
+     * Shows the full chain: Kotlin -> Swift -> Python
+     * 
+     * @return Demo info string
+     */
+    external fun getPythonDemoInfo(): String
 }

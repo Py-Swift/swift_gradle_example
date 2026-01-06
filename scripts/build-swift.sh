@@ -56,12 +56,17 @@ for i in "${!ARCHS[@]}"; do
     echo ""
     echo "📦 Building for $ARCH ($ABI) [$BUILD_CONFIG]..."
     
+    # Path to libpython3.13.so for linking
+    PYTHON_LIB_DIR="$OUTPUT_DIR/$ABI"
+    
     # Build the Swift library (includes swift-java dependency)
     # --disable-sandbox is required for SwiftJavaPlugin to fetch Java dependencies
+    # -Xlinker -L adds library search path for libpython3.13.so
     swift build \
         --swift-sdk "$ARCH" \
         --disable-sandbox \
-        -c "$BUILD_CONFIG"
+        -c "$BUILD_CONFIG" \
+        -Xlinker -L"$PYTHON_LIB_DIR"
     
     # Create output directory
     mkdir -p "$OUTPUT_DIR/$ABI"

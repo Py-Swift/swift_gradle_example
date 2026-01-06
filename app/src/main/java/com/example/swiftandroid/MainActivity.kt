@@ -39,6 +39,9 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         
+        // Copy Python stdlib from assets on first run
+        copyPythonStdlib()
+        
         // Get greeting from Swift
         val swiftGreeting = SwiftBridge.getGreetingFromSwift()
         
@@ -50,6 +53,40 @@ class MainActivity : ComponentActivity() {
                         modifier = Modifier.padding(innerPadding)
                     )
                 }
+            }
+        }
+    }
+    
+    private fun copyPythonStdlib() {
+        val pythonDir = java.io.File(filesDir, "python3.13")
+        if (!pythonDir.exists()) {
+            pythonDir.mkdirs()
+            try {
+                copyAssetFolder("python3.13", pythonDir.absolutePath)
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+    }
+    
+    private fun copyAssetFolder(assetPath: String, destPath: String) {
+        val assets = assets.list(assetPath) ?: return
+        if (assets.isEmpty()) {
+            // It's a file
+            copyAssetFile(assetPath, destPath)
+        } else {
+            // It's a directory
+            java.io.File(destPath).mkdirs()
+            for (asset in assets) {
+                copyAssetFolder("$assetPath/$asset", "$destPath/$asset")
+            }
+        }
+    }
+    
+    private fun copyAssetFile(assetPath: String, destPath: String) {
+        assets.open(assetPath).use { input ->
+            java.io.FileOutputStream(destPath).use { output ->
+                input.copyTo(output)
             }
         }
     }
@@ -175,6 +212,33 @@ fun SwiftJavaDemo(greeting: String, modifier: Modifier = Modifier) {
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Text("Get System Info (Swift→Java)")
+            }
+            
+            Spacer(modifier = Modifier.height(8.dp))
+            
+            // Phase 3: Python Button
+            Button(
+                onClick = {
+                    systemInfo = try {
+                        // Get the app's files directory for Python home
+                        val pythonHome = "/data/data/com.example.swiftandroid/files/python3.13"
+                        
+                        // Initialize Python if not already done
+                        val wasInit = SwiftBridge.isPythonInitialized()
+                        val initResult = if (!wasInit) {
+                            SwiftBridge.initializePython(pythonHome)
+                        } else true
+                        
+                        // Get Python demo info (shows full chain)
+                        val info = SwiftBridge.getPythonDemoInfo()
+                        "Init was: $wasInit, Init result: $initResult\n$info"
+                    } catch (e: Exception) {
+                        "Error: ${e.message}\n${e.stackTraceToString()}"
+                    }
+                },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("🐍 Python Demo (Kotlin→Swift→Python)")
             }
             
             Spacer(modifier = Modifier.height(16.dp))

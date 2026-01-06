@@ -57,7 +57,9 @@ let package = Package(
     ],
     dependencies: [
         // Use local swift-java for development
-        .package(name: "swift-java", path: "/Volumes/CodeSSD/GitHub/swift-java")
+        .package(name: "swift-java", path: "/Volumes/CodeSSD/GitHub/swift-java"),
+        // CPython for Android
+        .package(name: "CPython", path: "../CPython-android"),
     ],
     targets: [
         // Target that wraps Java CSV library for use in Swift
@@ -78,13 +80,14 @@ let package = Package(
             ]
         ),
         
-        // Main library that uses the wrapped Java CSV
+        // Main library that uses Java CSV and CPython
         .target(
             name: "SwiftAndroidLib",
             dependencies: [
                 "JavaCSV",
                 .product(name: "SwiftJava", package: "swift-java"),
                 .product(name: "CSwiftJavaJNI", package: "swift-java"),
+                .product(name: "CPython", package: "CPython"),
             ],
             swiftSettings: [
                 .swiftLanguageMode(.v5),
