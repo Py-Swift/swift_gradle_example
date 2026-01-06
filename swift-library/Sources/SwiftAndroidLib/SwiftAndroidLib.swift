@@ -1,38 +1,34 @@
 // Swift Android Library - JNI Bridge
-// Note: We avoid importing Foundation to simplify Android cross-compilation
+// Phase 2: Swift-Java style interop for Android
+// Inspired by https://github.com/swiftlang/swift-java
 
-// MARK: - JNI Types
-
-/// JNI function signature for NewStringUTF
-typealias NewStringUTFFunc = @convention(c) (
-    UnsafeMutablePointer<UnsafeMutableRawPointer?>?,  // JNIEnv*
-    UnsafePointer<CChar>?                              // const char*
-) -> UnsafeMutableRawPointer?                          // jstring
+#if os(Android)
+import Android
+#endif
 
 // MARK: - JNI Interface
 
 /// This function is called from Java/Kotlin via JNI to get a greeting message.
+/// Uses the JNIHelpers for cleaner JNI interaction.
 @_cdecl("Java_com_example_swiftandroid_SwiftBridge_getGreetingFromSwift")
 public func getGreetingFromSwift(
-    env: UnsafeMutablePointer<UnsafeMutableRawPointer?>?,
-    thisObj: UnsafeMutableRawPointer?
-) -> UnsafeMutableRawPointer? {
+    env: UnsafeMutablePointer<JNIEnv?>?,
+    thisObj: jobject?
+) -> jstring? {
     guard let env = env else { return nil }
     
-    let greeting = "Hello from Swift! 🚀\nRunning on Android via Swift SDK"
+    let jniEnv = JNIEnvironment(env)
     
-    return greeting.withCString { cString in
-        // JNIEnv is JNINativeInterface** - we need to get the function table
-        // env points to JNIEnv*, which points to JNINativeInterface*
-        guard let functionsPtr = env.pointee else { return nil }
+    let greeting = """
+        Hello from Swift! 🚀
+        Running on Android via Swift SDK
         
-        // The JNI function table is an array of function pointers
-        // NewStringUTF is at index 167 in the JNI function table
-        let functionTable = functionsPtr.assumingMemoryBound(to: UnsafeMutableRawPointer?.self)
-        
-        guard let newStringUTFPtr = functionTable[167] else { return nil }
-        
-        let newStringUTF = unsafeBitCast(newStringUTFPtr, to: NewStringUTFFunc.self)
-        return newStringUTF(env, cString)
-    }
+        Phase 2: Swift-Java Style Interop
+        ────────────────────────────────
+        This app demonstrates calling Java
+        methods from Swift via JNI, similar
+        to the swift-java library approach.
+        """
+    
+    return jniEnv.newString(greeting)
 }
