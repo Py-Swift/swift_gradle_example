@@ -68,6 +68,9 @@ dependencies {
     implementation(libs.androidx.ui.tooling.preview)
     implementation(libs.androidx.material3)
     debugImplementation(libs.androidx.ui.tooling)
+    
+    // Apache Commons CSV - required for Swift-Java interop demo
+    implementation("org.apache.commons:commons-csv:1.10.0")
 }
 
 // Task to build Swift library before assembling

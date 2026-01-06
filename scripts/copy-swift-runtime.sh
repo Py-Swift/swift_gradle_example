@@ -3,6 +3,7 @@ set -e
 
 # Copy Swift Runtime Libraries Script
 # This script copies required Swift runtime libraries to the Android jniLibs folder
+# Required for swift-java and Swift standard library support on Android
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
@@ -13,11 +14,11 @@ SWIFT_SDK_PATH=""
 
 # Check common locations
 if [ -d "$HOME/Library/org.swift.swiftpm/swift-sdks" ]; then
-    # macOS location
-    SWIFT_SDK_PATH=$(find "$HOME/Library/org.swift.swiftpm/swift-sdks" -name "*android*" -type d | head -1)
+    # macOS location - find latest android SDK
+    SWIFT_SDK_PATH=$(find "$HOME/Library/org.swift.swiftpm/swift-sdks" -maxdepth 1 -name "*android*" -type d | sort -V | tail -1)
 elif [ -d "$HOME/.swiftpm/swift-sdks" ]; then
     # Linux location
-    SWIFT_SDK_PATH=$(find "$HOME/.swiftpm/swift-sdks" -name "*android*" -type d | head -1)
+    SWIFT_SDK_PATH=$(find "$HOME/.swiftpm/swift-sdks" -maxdepth 1 -name "*android*" -type d | sort -V | tail -1)
 fi
 
 if [ -z "$SWIFT_SDK_PATH" ]; then
@@ -29,9 +30,13 @@ fi
 echo "🔍 Found Swift SDK at: $SWIFT_SDK_PATH"
 
 # Architecture mappings (avoiding associative arrays for bash 3.x compatibility)
+# Building both arm64-v8a (real devices) and x86_64 (emulators)
 ABIS="arm64-v8a x86_64"
 
-get_swift_lib_dir_for_abi() {
+# For faster builds during development, uncomment to only copy arm64:
+# ABIS="arm64-v8a"
+
+get_swift_arch_dir_for_abi() {
     case "$1" in
         "arm64-v8a") echo "swift-aarch64" ;;
         "x86_64") echo "swift-x86_64" ;;
@@ -40,36 +45,46 @@ get_swift_lib_dir_for_abi() {
 
 # Copy ALL Swift runtime libraries to ensure all dependencies are met
 for ABI in $ABIS; do
-    SWIFT_LIB_DIR=$(get_swift_lib_dir_for_abi "$ABI")
+    ARCH_DIR=$(get_swift_arch_dir_for_abi "$ABI")
     
     echo ""
     echo "📦 Copying runtime libraries for $ABI..."
     
-    # Find the lib directory for this architecture using the actual SDK structure
-    LIB_DIR=$(find "$SWIFT_SDK_PATH" -type d -name "$SWIFT_LIB_DIR" | head -1)
+    # The SDK structure is: swift-sdk/swift-android/swift-resources/usr/lib/<arch>/android/
+    LIB_DIR="$SWIFT_SDK_PATH/swift-android/swift-resources/usr/lib/$ARCH_DIR/android"
     
-    if [ -n "$LIB_DIR" ]; then
-        # Look for android subdirectory
-        if [ -d "$LIB_DIR/android" ]; then
-            LIB_DIR="$LIB_DIR/android"
-        fi
+    if [ ! -d "$LIB_DIR" ]; then
+        # Try alternate structure for older SDK
+        LIB_DIR="$SWIFT_SDK_PATH/toolchains/*/usr/lib/swift/android"
+        LIB_DIR=$(find "$SWIFT_SDK_PATH" -path "*/$ARCH_DIR/android" -type d 2>/dev/null | head -1)
     fi
     
-    if [ -z "$LIB_DIR" ]; then
+    if [ -z "$LIB_DIR" ] || [ ! -d "$LIB_DIR" ]; then
         echo "   ⚠️  Could not find lib directory for $ABI"
+        echo "   Searched: $SWIFT_SDK_PATH/swift-android/swift-resources/usr/lib/$ARCH_DIR/android"
         continue
     fi
+    
+    echo "   📁 Source: $LIB_DIR"
     
     mkdir -p "$OUTPUT_DIR/$ABI"
     
     # Copy all .so files from the Swift SDK lib directory
+    COPIED=0
     for LIB_PATH in "$LIB_DIR"/*.so; do
         if [ -f "$LIB_PATH" ]; then
             LIB_NAME=$(basename "$LIB_PATH")
             cp "$LIB_PATH" "$OUTPUT_DIR/$ABI/"
             echo "   ✅ $LIB_NAME"
+            COPIED=$((COPIED + 1))
         fi
     done
+    
+    if [ $COPIED -eq 0 ]; then
+        echo "   ⚠️  No .so files found in $LIB_DIR"
+    else
+        echo "   📊 Copied $COPIED runtime libraries"
+    fi
 done
 
 echo ""
@@ -94,19 +109,33 @@ if [ -d "$ANDROID_NDK_HOME" ]; then
                 "x86_64") NDK_ARCH="x86_64-linux-android" ;;
             esac
             
+            # Try darwin first, then linux
             LIBCPP="$NDK_PATH/toolchains/llvm/prebuilt/darwin-x86_64/sysroot/usr/lib/$NDK_ARCH/libc++_shared.so"
+            if [ ! -f "$LIBCPP" ]; then
+                LIBCPP="$NDK_PATH/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/lib/$NDK_ARCH/libc++_shared.so"
+            fi
             
             if [ -f "$LIBCPP" ]; then
                 cp "$LIBCPP" "$OUTPUT_DIR/$ABI/"
                 echo "   ✅ libc++_shared.so copied for $ABI"
             else
-                echo "   ⚠️  libc++_shared.so not found for $ABI at: $LIBCPP"
+                echo "   ⚠️  libc++_shared.so not found for $ABI"
             fi
         done
     else
         echo "   ⚠️  No NDK version found in $ANDROID_NDK_HOME"
     fi
 else
-    echo "   ⚠️  Android NDK not found. Please install it via Android Studio or sdkmanager."
-    echo "      Run: sdkmanager 'ndk;26.1.10909125'"
+    echo "   ⚠️  Android NDK not found at $ANDROID_NDK_HOME"
+    echo "      Install via Android Studio or: sdkmanager 'ndk;27.0.12077973'"
 fi
+
+echo ""
+echo "📁 Final jniLibs structure:"
+find "$OUTPUT_DIR" -name "*.so" | head -20
+TOTAL=$(find "$OUTPUT_DIR" -name "*.so" | wc -l | tr -d ' ')
+echo "   Total: $TOTAL libraries"
+
+echo ""
+echo "📝 Next step: Build the Android app"
+echo "   ./gradlew assembleDebug"
