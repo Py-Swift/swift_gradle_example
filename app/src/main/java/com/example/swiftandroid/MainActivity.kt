@@ -216,29 +216,19 @@ fun SwiftJavaDemo(greeting: String, modifier: Modifier = Modifier) {
             
             Spacer(modifier = Modifier.height(8.dp))
             
-            // Phase 3: Python Button
+            // Phase 3: PyPlayground Test Button
             Button(
                 onClick = {
                     systemInfo = try {
-                        // Get the app's files directory for Python home
-                        val pythonHome = "/data/data/com.example.swiftandroid/files/python3.13"
-                        
-                        // Initialize Python if not already done
-                        val wasInit = SwiftBridge.isPythonInitialized()
-                        val initResult = if (!wasInit) {
-                            SwiftBridge.initializePython(pythonHome)
-                        } else true
-                        
-                        // Get Python demo info (shows full chain)
-                        val info = SwiftBridge.getPythonDemoInfo()
-                        "Init was: $wasInit, Init result: $initResult\n$info"
+                        // Simple test - just init PyPlayground
+                        SwiftBridge.initPyPlayground()
                     } catch (e: Exception) {
                         "Error: ${e.message}\n${e.stackTraceToString()}"
                     }
                 },
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Text("🐍 Python Demo (Kotlin→Swift→Python)")
+                Text("🐍 Init PyPlayground")
             }
             
             Spacer(modifier = Modifier.height(16.dp))

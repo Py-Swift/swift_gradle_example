@@ -19,13 +19,10 @@ if [ "$1" = "--release" ] || [ "$1" = "-r" ]; then
 fi
 
 # Android architectures to build for
-# Building both arm64-v8a (real devices) and x86_64 (emulators)
+# Both arm64-v8a (real devices) and x86_64 (emulators)
+# Python headers are 64-bit Linux compatible for both architectures
 ARCHS=("aarch64-unknown-linux-android28" "x86_64-unknown-linux-android28")
 ABI_DIRS=("arm64-v8a" "x86_64")
-
-# For faster builds during development, uncomment to only build arm64:
-# ARCHS=("aarch64-unknown-linux-android28")
-# ABI_DIRS=("arm64-v8a")
 
 echo "🔨 Building Swift library for Android ($BUILD_CONFIG)..."
 echo "   Swift library: $SWIFT_LIB_DIR"
@@ -48,6 +45,9 @@ if ! swift sdk list 2>/dev/null | grep -q "android"; then
 fi
 
 cd "$SWIFT_LIB_DIR"
+
+# Set SWIFT_ANDROID_HOME to trigger Android mode in CPython Package.swift
+export SWIFT_ANDROID_HOME=1
 
 for i in "${!ARCHS[@]}"; do
     ARCH="${ARCHS[$i]}"

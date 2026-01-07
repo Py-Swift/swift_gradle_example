@@ -74,6 +74,13 @@ object SwiftBridge {
      */
     external fun getSystemInfo(): String
     
+    /**
+     * Initialize PyPlayground module from Swift.
+     * Simple test that PyPlayground is loaded and working.
+     * 
+     * @return Result message
+     */
+    external fun initPyPlayground(): String
     // ============== Phase 3: Python Integration ==============
     
     /**

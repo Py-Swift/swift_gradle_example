@@ -26,8 +26,8 @@ func findJavaHome() -> String {
             return output
         }
     } catch {}
-    
-    fatalError("Please set the JAVA_HOME environment variable")
+    return ""
+    //fatalError("Please set the JAVA_HOME environment variable")
 }
 
 let javaHome = findJavaHome()
@@ -53,13 +53,19 @@ let package = Package(
             name: "SwiftAndroidLib",
             type: .dynamic,
             targets: ["SwiftAndroidLib"]
+        ),
+        .library(
+            name: "PyPlayground",
+            type: .dynamic,
+            targets: ["PyPlayground"]
         )
     ],
     dependencies: [
         // Use local swift-java for development
         .package(name: "swift-java", path: "/Volumes/CodeSSD/GitHub/swift-java"),
         // CPython for Android
-        .package(name: "CPython", path: "../CPython-android"),
+        //.package(name: "CPython", path: "../CPython-android"),
+        .package(name: "PySwiftKit", path: "../PySwiftKit"),
     ],
     targets: [
         // Target that wraps Java CSV library for use in Swift
@@ -80,18 +86,29 @@ let package = Package(
             ]
         ),
         
-        // Main library that uses Java CSV and CPython
+        // Main library that uses Java CSV
         .target(
             name: "SwiftAndroidLib",
             dependencies: [
                 "JavaCSV",
+                "PyPlayground",
                 .product(name: "SwiftJava", package: "swift-java"),
                 .product(name: "CSwiftJavaJNI", package: "swift-java"),
-                .product(name: "CPython", package: "CPython"),
             ],
             swiftSettings: [
                 .swiftLanguageMode(.v5),
                 .unsafeFlags(["-I\(javaIncludePath)", "-I\(javaPlatformIncludePath)"])
+            ]
+        ),
+        
+        // PyPlayground - Python integration via PySwiftKit
+        .target(
+            name: "PyPlayground",
+            dependencies: [
+                .product(name: "PySwiftKitBase", package: "PySwiftKit"),
+            ],
+            swiftSettings: [
+                .swiftLanguageMode(.v5),
             ]
         )
     ]

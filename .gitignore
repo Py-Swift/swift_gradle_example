@@ -21,3 +21,5 @@ Package.resolved
 # OS
 .DS_Store
 Thumbs.db
+
+CPython.zip

@@ -1,9 +1,8 @@
-# Build artifacts
-.build/
-build-android/
-Frameworks/
-
-# Xcode
-*.xcodeproj
+.DS_Store
+/.build
+/Packages
 xcuserdata/
-*.xcworkspace
+DerivedData/
+.swiftpm/configuration/registries.json
+.swiftpm/xcode/package.xcworkspace/contents.xcworkspacedata
+.netrc
