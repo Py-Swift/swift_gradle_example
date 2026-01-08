@@ -58,14 +58,47 @@ class MainActivity : ComponentActivity() {
     }
     
     private fun copyPythonStdlib() {
-        val pythonDir = java.io.File(filesDir, "python3.13")
+        // Structure expected by PyLauncherIsolated:
+        // python_home = filesDir/python
+        // search_paths include: python_home/lib/python3.13 and python_home/lib/python3.13/lib-dynload
+        val pythonDir = java.io.File(filesDir, "python")
         if (!pythonDir.exists()) {
             pythonDir.mkdirs()
             try {
-                copyAssetFolder("python3.13", pythonDir.absolutePath)
+                copyAssetFolder("python", pythonDir.absolutePath)
+                android.util.Log.d("MainActivity", "Python stdlib copied to: ${pythonDir.absolutePath}")
             } catch (e: Exception) {
                 e.printStackTrace()
             }
+        }
+        
+        // Copy Python app folder (contains __main__.py)
+        val appDir = java.io.File(filesDir, "app")
+        // Always copy app folder to get latest changes during development
+        try {
+            if (appDir.exists()) {
+                appDir.deleteRecursively()
+            }
+            appDir.mkdirs()
+            copyAssetFolder("app", appDir.absolutePath)
+            android.util.Log.d("MainActivity", "Python app copied to: ${appDir.absolutePath}")
+            
+            // Configure Python - pythonHome is /data/.../files/python
+            // Swift will derive resourcePath and prog automatically:
+            //   resourcePath = /data/.../files (parent of pythonHome)
+            //   prog = /data/.../files/app/__main__.py
+            val pythonHome = pythonDir.absolutePath
+            
+            if (SwiftBridge.initializePython(pythonHome)) {
+                android.util.Log.d("MainActivity", "Python configured (PYTHONHOME=$pythonHome)")
+            } else {
+                android.util.Log.e("MainActivity", "Failed to configure Python environment")
+            }
+            
+            // Note: Actual Python initialization happens in runPythonApp() via PySwiftLauncher.initPython()
+        } catch (e: Exception) {
+            android.util.Log.e("MainActivity", "Error copying Python app: ${e.message}")
+            e.printStackTrace()
         }
     }
     
@@ -229,6 +262,23 @@ fun SwiftJavaDemo(greeting: String, modifier: Modifier = Modifier) {
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Text("🐍 Init PyPlayground")
+            }
+            
+            Spacer(modifier = Modifier.height(8.dp))
+            
+            // Phase 3: Run Python App Button
+            Button(
+                onClick = {
+                    systemInfo = try {
+                        val result = SwiftBridge.runPythonApp()
+                        "Python app result: $result"
+                    } catch (e: Exception) {
+                        "Error: ${e.message}\n${e.stackTraceToString()}"
+                    }
+                },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("🐍 Run Python App")
             }
             
             Spacer(modifier = Modifier.height(16.dp))

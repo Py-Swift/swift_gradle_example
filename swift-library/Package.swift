@@ -58,6 +58,11 @@ let package = Package(
             name: "PyPlayground",
             type: .dynamic,
             targets: ["PyPlayground"]
+        ),
+        .library(
+            name: "PySwiftLauncher",
+            type: .dynamic,
+            targets: ["PySwiftLauncher"]
         )
     ],
     dependencies: [
@@ -66,6 +71,7 @@ let package = Package(
         // CPython for Android
         //.package(name: "CPython", path: "../CPython-android"),
         .package(name: "PySwiftKit", path: "../PySwiftKit"),
+        .package(name: "PythonLauncher", path: "../PythonLauncher"),
     ],
     targets: [
         // Target that wraps Java CSV library for use in Swift
@@ -92,6 +98,7 @@ let package = Package(
             dependencies: [
                 "JavaCSV",
                 "PyPlayground",
+                "PySwiftLauncher",
                 .product(name: "SwiftJava", package: "swift-java"),
                 .product(name: "CSwiftJavaJNI", package: "swift-java"),
             ],
@@ -106,6 +113,19 @@ let package = Package(
             name: "PyPlayground",
             dependencies: [
                 .product(name: "PySwiftKitBase", package: "PySwiftKit"),
+            ],
+            swiftSettings: [
+                .swiftLanguageMode(.v5),
+            ]
+        ),
+        
+        // PySwiftLauncher - Python launcher inheriting from PythonLauncher protocol
+        .target(
+            name: "PySwiftLauncher",
+            dependencies: [
+                .product(name: "PySwiftKitBase", package: "PySwiftKit"),
+                .product(name: "PythonLauncher", package: "PythonLauncher"),
+                "JavaCSV",
             ],
             swiftSettings: [
                 .swiftLanguageMode(.v5),

@@ -24,7 +24,14 @@ object SwiftBridge {
             // Load Python library (Phase 3)
             tryLoadLibrary("python3.13")
             
-            // Load our Swift library
+            // Load Swift-Java runtime
+            System.loadLibrary("SwiftJava")
+            
+            // Load PySwiftKit dependencies (order matters!)
+            System.loadLibrary("PyPlayground")
+            System.loadLibrary("PySwiftLauncher")
+            
+            // Load our Swift library (depends on all above)
             System.loadLibrary("SwiftAndroidLib")
             
         } catch (e: UnsatisfiedLinkError) {
@@ -126,4 +133,20 @@ object SwiftBridge {
      * @return Demo info string
      */
     external fun getPythonDemoInfo(): String
+    
+    /**
+     * Set the path to the Python app's __main__.py file.
+     * Must be called after initializePython.
+     * 
+     * @param appPath Absolute path to __main__.py
+     */
+    external fun setPythonAppPath(appPath: String)
+    
+    /**
+     * Run the Python app's __main__.py file.
+     * Must be called after setPythonAppPath.
+     * 
+     * @return Exit code from Python execution
+     */
+    external fun runPythonApp(): Int
 }

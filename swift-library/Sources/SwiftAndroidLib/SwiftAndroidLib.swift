@@ -12,6 +12,9 @@ import Darwin
 import SwiftJava
 import JavaCSV
 import PyPlayground
+import PySwiftLauncher
+import PySwiftKit
+import Foundation
 import JavaIO
 
 // MARK: - CSV Processing using Java Library
@@ -77,6 +80,10 @@ public func getGreetingFromSwift() -> String {
         ────────────────────────────────
         Now using swift-java to call
         Java libraries from Swift!
+
+        Phase 3: PySwiftKit Integration
+        ────────────────────────────────
+        Bundle.main \(Bundle.main.bundlePath)
         """
 }
 
@@ -209,6 +216,16 @@ public func jni_initPyPlayground(
     
     let playground = PyPlayground()
     return env.pointee?.pointee.NewStringUTF(env, playground.value)
+}
+
+@_cdecl("Java_com_example_swiftandroid_SwiftBridge_usePySwiftKit")
+public func jni_usePySwiftKit(
+    _ env: UnsafeMutablePointer<JNIEnv?>?,
+    _ thisObj: jobject?
+)  {
+    guard let env = env else { return }
+    
+    
 }
 
 /// JNI export for getSystemInfo
@@ -345,4 +362,168 @@ func p(_ msg: String, file: String = #fileID, line: UInt = #line, function: Stri
     #if canImport(Android) || canImport(Glibc) || canImport(Darwin)
     fflush(stdout)
     #endif
+}
+
+// MARK: - Python Integration (Phase 3)
+
+/// Global Python home path
+nonisolated(unsafe) private var pythonHomePath: String = ""
+
+/// JNI export for initializePython
+@_cdecl("Java_com_example_swiftandroid_SwiftBridge_initializePython")
+public func jni_initializePython(
+    _ env: UnsafeMutablePointer<JNIEnv?>?,
+    _ thisObj: jobject?,
+    _ pythonHome: jstring?
+) -> jboolean {
+    guard let env = env, let pythonHome = pythonHome else { return jboolean(JNI_FALSE) }
+    
+    // Convert Java string to Swift string
+    guard let chars = env.pointee?.pointee.GetStringUTFChars(env, pythonHome, nil) else {
+        return jboolean(JNI_FALSE)
+    }
+    pythonHomePath = String(cString: chars)
+    env.pointee?.pointee.ReleaseStringUTFChars(env, pythonHome, chars)
+    
+    p("Initializing Python with home: \(pythonHomePath)")
+    
+    // Derive resourcePath and prog from pythonHome
+    // pythonHome = /data/.../files/python
+    // resourcePath = /data/.../files (parent)
+    // prog = /data/.../files/app/__main__.py
+    let resourcePath = (pythonHomePath as NSString).deletingLastPathComponent
+    let prog = "\(resourcePath)/app/__main__.py"
+    
+    p("Derived resourcePath: \(resourcePath)")
+    p("Derived prog: \(prog)")
+    
+    PySwiftLauncher.shared.setResourcePath(resourcePath)
+    PySwiftLauncher.shared.setProg(prog)
+    
+    // Set environment variables for Python
+    setenv("PYTHONHOME", pythonHomePath, 1)
+    setenv("PYTHONPATH", pythonHomePath, 1)
+    setenv("PYTHONDONTWRITEBYTECODE", "1", 1)
+    setenv("PYTHONNOUSERSITE", "1", 1)
+    
+    p("Python environment configured")
+    return jboolean(JNI_TRUE)
+}
+
+/// JNI export for finalizePython
+@_cdecl("Java_com_example_swiftandroid_SwiftBridge_finalizePython")
+public func jni_finalizePython(
+    _ env: UnsafeMutablePointer<JNIEnv?>?,
+    _ thisObj: jobject?
+) {
+    p("Finalizing Python")
+    Py_FinalizeEx()
+}
+
+/// JNI export for isPythonInitialized
+@_cdecl("Java_com_example_swiftandroid_SwiftBridge_isPythonInitialized")
+public func jni_isPythonInitialized(
+    _ env: UnsafeMutablePointer<JNIEnv?>?,
+    _ thisObj: jobject?
+) -> jboolean {
+    return Py_IsInitialized() != 0 ? jboolean(JNI_TRUE) : jboolean(JNI_FALSE)
+}
+
+/// JNI export for getPythonVersion
+@_cdecl("Java_com_example_swiftandroid_SwiftBridge_getPythonVersion")
+public func jni_getPythonVersion(
+    _ env: UnsafeMutablePointer<JNIEnv?>?,
+    _ thisObj: jobject?
+) -> jstring? {
+    guard let env = env else { return nil }
+    let version = PySwiftLauncher.shared.PYTHON_VERSION
+    return env.pointee?.pointee.NewStringUTF(env, version)
+}
+
+/// JNI export for runPythonCode
+@_cdecl("Java_com_example_swiftandroid_SwiftBridge_runPythonCode")
+public func jni_runPythonCode(
+    _ env: UnsafeMutablePointer<JNIEnv?>?,
+    _ thisObj: jobject?,
+    _ code: jstring?
+) -> jstring? {
+    guard let env = env, let code = code else { return nil }
+    
+    // Convert Java string to Swift string
+    guard let chars = env.pointee?.pointee.GetStringUTFChars(env, code, nil) else {
+        return nil
+    }
+    let pythonCode = String(cString: chars)
+    env.pointee?.pointee.ReleaseStringUTFChars(env, code, chars)
+    
+    p("Running Python code: \(pythonCode.prefix(50))...")
+    
+    let result = PySwiftLauncher.shared.runCode(pythonCode)
+    let message = result == 0 ? "✅ Python code executed successfully" : "❌ Python code execution failed with code: \(result)"
+    
+    return env.pointee?.pointee.NewStringUTF(env, message)
+}
+
+/// JNI export for getPythonDemoInfo
+@_cdecl("Java_com_example_swiftandroid_SwiftBridge_getPythonDemoInfo")
+public func jni_getPythonDemoInfo(
+    _ env: UnsafeMutablePointer<JNIEnv?>?,
+    _ thisObj: jobject?
+) -> jstring? {
+    guard let env = env else { return nil }
+    
+    var info = "🐍 Python Integration (Phase 3)\n"
+    info += String(repeating: "─", count: 40) + "\n"
+    info += "PYTHONHOME: \(pythonHomePath)\n"
+    info += "Version: \(PySwiftLauncher.shared.PYTHON_VERSION)\n"
+    info += "Initialized: \(Py_IsInitialized() != 0 ? "Yes" : "No")\n"
+    info += "App Path: \(PySwiftLauncher.shared.prog ?? "not set")\n"
+    info += String(repeating: "─", count: 40) + "\n"
+    info += "Chain: Kotlin → Swift → Python ✅"
+    
+    return env.pointee?.pointee.NewStringUTF(env, info)
+}
+
+/// JNI export for setPythonAppPath - set the path to __main__.py
+@_cdecl("Java_com_example_swiftandroid_SwiftBridge_setPythonAppPath")
+public func jni_setPythonAppPath(
+    _ env: UnsafeMutablePointer<JNIEnv?>?,
+    _ thisObj: jobject?,
+    _ appPath: jstring?
+) {
+    guard let env = env, let appPath = appPath else { return }
+    
+    // Convert Java string to Swift string
+    guard let chars = env.pointee?.pointee.GetStringUTFChars(env, appPath, nil) else {
+        return
+    }
+    let path = String(cString: chars)
+    env.pointee?.pointee.ReleaseStringUTFChars(env, appPath, chars)
+    
+    p("Setting Python app path: \(path)")
+    PySwiftLauncher.shared.setProg(path)
+}
+
+/// JNI export for runPythonApp - run the __main__.py file
+@_cdecl("Java_com_example_swiftandroid_SwiftBridge_runPythonApp")
+public func jni_runPythonApp(
+    _ env: UnsafeMutablePointer<JNIEnv?>?,
+    _ thisObj: jobject?
+) -> jint {
+    p("Running Python app via PySwiftLauncher")
+    
+    // Cache JNI environment for Python → Swift → Java calls
+    cachedJNIEnv = env
+    
+    do {
+        // Run the app
+        var argv: [UnsafeMutablePointer<CChar>?] = []
+
+        try PySwiftLauncher.run(0, &argv)
+        p("Python app finished execution")
+        return 0
+    } catch {
+        p("Error running Python app: \(error)")
+        return -1
+    }
 }
