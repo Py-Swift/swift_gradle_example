@@ -14,6 +14,8 @@ import SwiftJava
 import JavaIO
 import JavaUtil
 
+import PyJavaContainers
+
 /// Global cached JNI environment for use by Python-called Swift code
 /// This must be set by Kotlin before Python runs
 public nonisolated(unsafe) var cachedJNIEnv: UnsafeMutablePointer<JNIEnv?>? = nil
@@ -120,12 +122,12 @@ class PyJavaCSV {
         
         let java_data = data.map { JavaString($0, environment: environment) }
         // 1. Convert Swift array to Java ArrayList
-        let arrayList = ArrayList<JavaString>(environment: environment)
+        // let arrayList = ArrayList<JavaString>(environment: environment)
         
-        // Add each Swift string to Java ArrayList
-        for str in java_data {
-            _ = arrayList.add(str.as(JavaObject.self))
-        }
+        // // Add each Swift string to Java ArrayList
+        // for str in java_data {
+        //     _ = arrayList.add(str.as(JavaObject.self))
+        // }
         
             // 2. Use Java's String.join(delimiter, collection) 
             let stringClass = try JavaClass<JavaString>(environment: environment)
@@ -134,6 +136,46 @@ class PyJavaCSV {
             
         // 3. Return the joined string back to Swift
         return result
+    }
+
+    @PyMethod
+    static func pyClassCallbacks(_ container: PySwiftDataContainer) throws {
+        // Call Kotlin and pass the container using raw JNI
+        // Kotlin will call the callback functions cb_0 and cb_1 on the container
+        guard let env = cachedJNIEnv else {
+            print("Error: JNI environment not initialized")
+            return
+        }
+        
+        // Use raw JNI to call KotlinCallbackHandler.invokeCallbacks(container)
+        // Since KotlinCallbackHandler is in the Android app, we can't use swift-java wrappers
+        
+        // Find the KotlinCallbackHandler class
+        guard let handlerClass = env.pointee?.pointee.FindClass(env, "com/example/swiftandroid/KotlinCallbackHandler") else {
+            print("Error: Could not find KotlinCallbackHandler class")
+            return
+        }
+        
+        // Find the invokeCallbacks static method
+        // Signature: (Lcom/example/swift/containers/PySwiftDataContainer;)V
+        guard let methodId = env.pointee?.pointee.GetStaticMethodID(
+            env, 
+            handlerClass, 
+            "invokeCallbacks", 
+            "(Lcom/example/swift/containers/PySwiftDataContainer;)V"
+        ) else {
+            print("Error: Could not find invokeCallbacks method")
+            return
+        }
+        
+        // Get the Java object from the container (JExtract exports it as a Java object)
+        // For now, pass the container's underlying Java object reference
+        // TODO: Get the actual jobject from PySwiftDataContainer once JExtract generates it
+        
+        // Call the static method
+        // env.pointee?.pointee.CallStaticVoidMethod(env, handlerClass, methodId, containerJobject)
+        
+        print("[Swift] pyClassCallbacks: JNI setup ready, awaiting JExtract container integration")
     }
 }
 

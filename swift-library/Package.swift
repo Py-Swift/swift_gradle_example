@@ -26,8 +26,8 @@ func findJavaHome() -> String {
             return output
         }
     } catch {}
-    return ""
-    //fatalError("Please set the JAVA_HOME environment variable")
+    //return ""
+    fatalError("Please set the JAVA_HOME environment variable")
 }
 
 let javaHome = findJavaHome()
@@ -63,6 +63,11 @@ let package = Package(
             name: "PySwiftLauncher",
             type: .dynamic,
             targets: ["PySwiftLauncher"]
+        ),
+        .library(
+            name: "PyJavaContainers",
+            type: .dynamic,
+            targets: ["PyJavaContainers"]
         )
     ],
     dependencies: [
@@ -125,10 +130,32 @@ let package = Package(
             dependencies: [
                 .product(name: "PySwiftKitBase", package: "PySwiftKit"),
                 .product(name: "PythonLauncher", package: "PythonLauncher"),
+                .product(name: "SwiftJava", package: "swift-java"),
                 "JavaCSV",
+                "PyJavaContainers"
             ],
             swiftSettings: [
                 .swiftLanguageMode(.v5),
+                .unsafeFlags(["-I\(javaIncludePath)", "-I\(javaPlatformIncludePath)"]),
+            ]
+        ),
+        
+        // PyJavaContainers - Swift types exported to Java via JExtract
+        .target(
+            name: "PyJavaContainers",
+            dependencies: [
+                .product(name: "SwiftJava", package: "swift-java"),
+                .product(name: "CSwiftJavaJNI", package: "swift-java"),
+                .product(name: "SwiftJavaRuntimeSupport", package: "swift-java"),
+                .product(name: "PySwiftKitBase", package: "PySwiftKit"),
+            ],
+            exclude: ["swift-java.config"],
+            swiftSettings: [
+                .swiftLanguageMode(.v5),
+                .unsafeFlags(["-I\(javaIncludePath)", "-I\(javaPlatformIncludePath)"]),
+            ],
+            plugins: [
+                .plugin(name: "JExtractSwiftPlugin", package: "swift-java")
             ]
         )
     ]

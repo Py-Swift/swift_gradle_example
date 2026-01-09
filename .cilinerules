@@ -1,0 +1,55 @@
+# Rules for AI Assistant
+
+## Before Making Changes
+
+1. DO NOT guess solutions. If unsure, fetch and read the official swift-java samples first:
+   - https://github.com/swiftlang/swift-java/tree/main/Samples/SwiftJavaExtractJNISampleApp
+   - https://github.com/swiftlang/swift-java/tree/main/Samples
+
+2. When build errors occur, check how the official samples handle it before adding custom workarounds.
+
+3. Keep build scripts simple. Do not add flags or workarounds without evidence they are needed.
+
+## Swift + Java + Android
+
+1. The official swift-java samples are the source of truth for swift-java patterns.
+
+2. Do not add `-Xcc` or other compiler flags unless you have confirmed they are necessary and won't break other parts of the build.
+
+3. The Swift Android SDK should be configured once with `swift sdk configure`, not worked around with build script flags.
+
+4. `-Xcc` flags passed to `swift build` affect ALL compilations including host tools - this causes header conflicts between macOS and Android.
+
+5. Cross-compilation has TWO phases: building host tools (plugins, SwiftJavaTool) for macOS, then building the library for Android. Do not mix these.
+
+## CPython Package.swift
+
+1. CPython Package.swift has platform detection: `SWIFT_ANDROID_HOME` env var triggers `.android`, otherwise falls back to `.apple` which uses the xcframework.
+
+2. When building for macOS (host tools), `SWIFT_ANDROID_HOME` should NOT be set, so CPython uses the Apple xcframework.
+
+3. Do not add NDK paths to CPython Package.swift if the Swift SDK is properly configured with `--sdk-root-path`.
+
+## General Rules
+
+1. Ask clarifying questions instead of guessing.
+
+2. Make minimal, targeted changes. Do not refactor unrelated code.
+
+3. Test one fix at a time, not multiple changes at once.
+
+4. If a fix doesn't work, revert it before trying something else.
+
+5. Understand the existing logic before modifying it. Read the full file, not just the error location.
+
+6. When something "should work" but doesn't, check configuration (SDK, env vars) before adding code workarounds.
+
+## Workflow
+
+1. Work in small steps. One change, one test.
+
+2. When a change is confirmed working, commit and push before moving on.
+
+3. This creates commit points to fall back to when something breaks.
+
+4. Do not make multiple unrelated changes before testing.
